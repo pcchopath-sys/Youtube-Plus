@@ -104,9 +104,24 @@ jobs:
         with:
           exclude_inputs: bundle_id,display_name,enable_demc,enable_ryd,enable_ytabc,enable_youpip,enable_yq,enable_ytuhd,info_note,tweak_version
 
+      - name: Validate IPA URL
+        run: |
+          IPA_URL="${{ github.event.inputs.ipa_url }}"
+          if [[ -z "$IPA_URL" ]]; then
+            echo "::error::IPA URL is empty. Please provide a valid URL."
+            exit 1
+          fi
+          if ! [[ "$IPA_URL" =~ ^https?:// ]]; then
+            echo "::error::IPA URL must start with http:// or https://. Provided: $IPA_URL"
+            exit 1
+          fi
+
       - name: Download and validate IPA
         run: |
-          wget "${{ github.event.inputs.ipa_url }}" --no-verbose -O youtube.ipa
+          wget "${{ github.event.inputs.ipa_url }}" --no-verbose -O youtube.ipa --tries=3 --timeout=10 || {
+            echo "::error::Failed to download IPA file. Please check the URL is valid and accessible."
+            exit 1
+          }
           file_type=$(file --mime-type -b youtube.ipa)
           if [[ "$file_type" != "application/x-ios-app" && "$file_type" != "application/zip" ]]; then
             echo "::error::Validation failed: The downloaded file is not a valid IPA. Detected type: $file_type."
